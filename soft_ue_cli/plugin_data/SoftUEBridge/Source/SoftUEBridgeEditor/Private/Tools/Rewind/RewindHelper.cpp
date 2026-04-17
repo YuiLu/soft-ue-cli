@@ -127,9 +127,9 @@ bool FRewindHelper::HasData()
 	IRewindDebugger* Debugger = GetRewindDebugger();
 	if (Debugger)
 	{
-		// Check if debugger has objects or is recording/loaded
-		TArray<TSharedPtr<FDebugObjectInfo>>& Objects = Debugger->GetDebuggedObjects();
-		if (Objects.Num() > 0)
+		// Check if debugger has components or is recording/loaded
+		TArray<TSharedPtr<FDebugObjectInfo>>& Components = Debugger->GetDebugComponents();
+		if (Components.Num() > 0)
 		{
 			return true;
 		}
@@ -154,20 +154,7 @@ FString FRewindHelper::StartRecording(
 		return TEXT("Already recording. Stop current recording first.");
 	}
 
-	// Try using the IRewindDebugger's own recording API first
-	if (Debugger && Debugger->CanStartRecording())
-	{
-		Debugger->StartRecording();
-		bRecordingActive = true;
-		bLoadedFromFile = false;
-		ActiveChannels = Channels;
-		ActiveActorFilters = ActorTags;
-		ActiveTraceFile = FilePath;
-		RecordingStartTime = FPlatformTime::Seconds();
-		return FString();
-	}
-
-	// Fallback: start via console command
+	// Start recording via console command (IRewindDebugger interface does not expose StartRecording directly)
 	TArray<FString> ResolvedChannels;
 	if (Channels.Num() == 0)
 	{
@@ -303,8 +290,8 @@ TSharedPtr<FDebugObjectInfo> FRewindHelper::FindObjectByTag(
 		return nullptr;
 	}
 
-	TArray<TSharedPtr<FDebugObjectInfo>>& Objects = Debugger->GetDebuggedObjects();
-	for (const TSharedPtr<FDebugObjectInfo>& Info : Objects)
+	TArray<TSharedPtr<FDebugObjectInfo>>& Components = Debugger->GetDebugComponents();
+	for (const TSharedPtr<FDebugObjectInfo>& Info : Components)
 	{
 		if (Info.IsValid() && GetActorTagFromDebugObject(*Info) == ActorTag)
 		{
@@ -346,9 +333,9 @@ TSharedPtr<FJsonObject> FRewindHelper::CollectTrackList(const FString& ActorTag)
 	Range->SetNumberField(TEXT("end"), TraceRange.HasUpperBound() ? TraceRange.GetUpperBoundValue() : Debugger->GetRecordingDuration());
 	Result->SetObjectField(TEXT("recording_range"), Range);
 
-	// Enumerate debugged objects
+	// Enumerate debug components
 	TArray<TSharedPtr<FJsonValue>> ActorsArr;
-	TArray<TSharedPtr<FDebugObjectInfo>>& Objects = Debugger->GetDebuggedObjects();
+	TArray<TSharedPtr<FDebugObjectInfo>>& Objects = Debugger->GetDebugComponents();
 
 	for (const TSharedPtr<FDebugObjectInfo>& Info : Objects)
 	{
